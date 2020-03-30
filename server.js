@@ -6,12 +6,15 @@ const cors = require('cors')
 const MOVIE = require('./movie-data.json')
 const app = express()
 
-app.use(morgan('dev'))
+const morganSetting = process.env.NODE_ENV === "production" ? "tiny" : "dev";
+app.use(morgan(morganSetting))
+app.use(validateBearerToken);
 app.use(cors())
 app.use(helmet())
+app.get('/movie', handleGetMovie);
 
 
-app.use(function validateBearerToken(req, res, next) {
+function validateBearerToken(req, res, next) {
     const apiToken = process.env.API_TOKEN
     const authToken = req.get('Authorization')
   
@@ -20,9 +23,9 @@ app.use(function validateBearerToken(req, res, next) {
     }
     // move to the next middleware
     next()
-  })
+  }
 
-app.get('/movie', function handleGetMovie(req, res) {
+function handleGetMovie(req, res) {
         let response = MOVIE;
 //When searching by genre, users are searching for whether the Movie's genre includes a specified string. 
 //The search should be case insensitive.
@@ -33,7 +36,7 @@ app.get('/movie', function handleGetMovie(req, res) {
             )
           }
         
-          // filter our pokemon by type if type query param is present
+  
           if (req.query.country) {
             response = response.filter(movie =>
                 movie.country.toLowerCase().includes(req.query.country.toLowerCase())
@@ -46,9 +49,19 @@ app.get('/movie', function handleGetMovie(req, res) {
           }
 
           res.json(response)
-        })
+        }
 
- const PORT = 8000
+app.use((error,req,res,next) => {
+  let response
+    if(process.env.NODE_ENV === 'production'){
+        response = { error: { message: 'server error' }}
+      } else {
+        reponse = {error}
+          }
+          res.status(500).json(response); 
+    })
+
+const PORT = process.env.PORT || 8000
           
 app.listen(PORT, () => {
     console.log(`Server listening at http://localhost:${PORT}`)
